@@ -26,6 +26,9 @@ data EType
   | ChangeMessage String
   | VolUp
   | VolDown
+  | ChangeChannel Channel
+
+type Channel = (String, Float)
 
 newEHandler :: UI (EHandler a)
 newEHandler = do
@@ -38,18 +41,26 @@ newEHandler = do
         mapM_ ($ a) . M.elems $ hs
   return $ EHandler listen' fire'
 
+createSelectBox opts = UI.select #+ map f opts
+  where
+    f (t, v) = UI.option # set UI.value v # set UI.text t
+
+channels = [("OE3", 99.90), ("Kronehit", 105.80), ("FM4", 103.80), ("NRJ", 104.20), ("Mein Kinderradio", 103.20)]
+channelsFS = map (\(a, b) -> (a, show b)) channels
+
 setup :: Window -> UI ()
 setup window
  = do
 
   -- window properties
-  pure window # set UI.title "Hello World!"
+  pure window # set UI.title "Radio Tuner"
 
   -- state
   radioS <- liftIO $ newIORef False
   recordingS <- liftIO $ newIORef False
   messageLogS <- liftIO $ newIORef ("" :: String)
   volS <- liftIO $ newIORef (7 :: Int)
+  selChannelS <- liftIO $ newIORef (head channels :: Channel)
 
   -- simple event handler
   (e :: EHandler EType) <- newEHandler
@@ -62,6 +73,7 @@ setup window
   volDis <- UI.span # set UI.text "7"
   volPlus <- UI.button # set UI.text "[ + ]"
   volMinus <- UI.button # set UI.text "[ - ]"
+  selectBox <- createSelectBox channelsFS
 
   -- main event handler function
   let defHandler RadioStart = do
@@ -110,6 +122,13 @@ setup window
           liftIO $ modifyIORef volS (flip (-) 1)
           element volDis # set UI.text (show $ vS - 1) 
           return ()
+      defHandler (ChangeChannel c) = do
+        rS <- liftIO . readIORef $ radioS
+        cS <- liftIO . readIORef $ selChannelS
+        when (rS && (cS /= c)) $ do
+          fire e (ChangeMessage $ "Channel changed to " ++ fst c)
+          liftIO $ modifyIORef selChannelS $ const c
+          return ()
   
   -- start listening
   listen e defHandler
@@ -125,11 +144,16 @@ setup window
          else fire e RecordingStart
   on UI.click volPlus $ const $ fire e VolUp
   on UI.click volMinus $ const $ fire e VolDown
+  on UI.selectionChange selectBox $ \x ->
+    case x of
+      Nothing -> return ()
+      Just i -> fire e (ChangeChannel (channels !! i))
 
   -- display
   let g = grid [
           [element radioBtn, element recordingBtn],
           [element volMinus, element volDis, element volPlus],
+          [element selectBox],
           [element messageLog]
         ]
 
