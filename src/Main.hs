@@ -27,6 +27,7 @@ data EType
   | VolUp
   | VolDown
   | ChangeChannel Channel
+  | GetChannel
 
 type Channel = (String, Float)
 
@@ -129,6 +130,7 @@ setup window
           fire e (ChangeMessage $ "Channel changed to " ++ fst c)
           liftIO $ modifyIORef selChannelS $ const c
           return ()
+      defHandler GetChannel = fire e (ChangeMessage "Getting channel")
   
   -- start listening
   listen e defHandler
