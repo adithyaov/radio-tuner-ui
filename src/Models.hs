@@ -1,32 +1,33 @@
-
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Dtos where
 
-import GHC.Generics
+module Models where
+
 import Data.Aeson
-import Control.Lens
-import Snap.Snaplet.PostgresqlSimple
+import GHC.Generics
 
-data RequestChannel = RequestChannel { _frequenz  :: Double} deriving (Show, Generic)
-data ResponseChannel = ResponseChannel { _channel  :: ![Char]} deriving (Show, Generic)
-data Recording = Recording { _filePath  :: ![Char]} deriving (Show, Generic)
-data VolumeRequest = VolumeRequest { _volume  :: Double} deriving (Show, Generic)
+newtype RequestChannel = RequestChannel
+  { _frequenz :: Double
+  } deriving (Show, Generic)
 
+data ResponseChannel = ResponseChannel
+  { _channel :: !String
+  } deriving (Show, Generic)
 
-makeLenses ''RequestChannel
-makeLenses ''ResponseChannel
-makeLenses ''Recording
-makeLenses ''VolumeRequest
+data Recording = Recording
+  { _filePath :: !String
+  } deriving (Show, Generic)
 
-instance FromJSON RequestChannel
-instance ToJSON ResponseChannel
-instance FromJSON Recording
+newtype VolumeRequest = VolumeRequest
+  { _volume :: Int
+  } deriving (Show, Generic)
+
+instance ToJSON RequestChannel
+
+instance FromJSON ResponseChannel
+
 instance ToJSON Recording
+
+instance ToJSON VolumeRequest
+
 instance FromJSON VolumeRequest
-
-instance FromRow Recording where
-  fromRow = Recording <$> field
-

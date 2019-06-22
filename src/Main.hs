@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
@@ -10,6 +11,10 @@ import qualified Graphics.UI.Threepenny as UI
 import Graphics.UI.Threepenny.Core
 import Control.Monad
 import Data.Char (isSpace)
+import Data.Aeson
+import Network.HTTP.Simple
+import Network.HTTP.Conduit
+import Models
 
 -- The main function
 main :: IO ()
@@ -35,6 +40,23 @@ data EType
   | RecordingNameChange String
 
 type Channel = (String, Float)
+
+-- Http helper for posting data
+postJson :: (ToJSON a, FromJSON b) => String -> a -> UI b 
+postJson url a = do
+  request' <- parseRequest url
+  let request = setRequestMethod "POST"
+              $ setRequestBodyLBS (encode a)
+              $ request'
+  getResponseBody <$> httpJSON request
+
+-- Http helper for getting data
+getJson :: (FromJSON b) => String -> UI b 
+getJson url = do
+  request' <- parseRequest url
+  let request = setRequestMethod "GET"
+              $ request'
+  getResponseBody <$> httpJSON request
 
 -- Helper function trim
 trim :: String -> String
@@ -98,6 +120,7 @@ setup window
   volMinus <- UI.button # set UI.text "[ - ]"
   selectBox <- createSelectBox $ map (\(a, b) -> (a, show b)) channels
   recordingName <- UI.input # set UI.type_ "text"
+  getChannelBtn <- UI.button # set UI.text "Get Channel"
 
   -- Main event handler function
   -- Event handler for RadioStart
@@ -172,7 +195,13 @@ setup window
           return ()
 
     -- Event handler for GetChannel
-      defHandler GetChannel = fire e (LogMessage "Getting channel")
+      defHandler GetChannel = do
+        rS <- liftIO . readIORef $ radioS
+        when rS $ do
+          fire e (LogMessage "Getting channel")
+          c <- getJson "http://www.mocky.io/v2/5d0d81dd3400006300ca4a1d"
+          fire e (LogMessage $ "The Channel is " ++ _channel c)
+          return ()
 
     -- Event handler for RecordingNameChange
       defHandler (RecordingNameChange s) = do
@@ -196,6 +225,7 @@ setup window
          else fire e RecordingStart
   on UI.click volPlus $ const $ fire e VolUp
   on UI.click volMinus $ const $ fire e VolDown
+  on UI.click getChannelBtn $ const $ fire e GetChannel
   on UI.valueChange recordingName $ fire e . RecordingNameChange
   on UI.selectionChange selectBox $ \x ->
     case x of
@@ -205,6 +235,7 @@ setup window
   -- Display
   let g = grid [
            [tSpan "Radio Control", element radioBtn],
+           [tSpan "Current Channel", element getChannelBtn],
            [tSpan "Selected Channel", element selectBox],
            [tSpan "Volume Control", UI.div #+ 
              [element volMinus, element volDis, element volPlus]],
