@@ -22,6 +22,10 @@ newtype VolumeRequest = VolumeRequest
   { _volume :: Int
   } deriving (Show, Generic)
 
+newtype BasicResponse = BasicResponse
+  { _message :: String
+  } deriving (Show, Generic)
+
 instance ToJSON RequestChannel
 
 instance FromJSON ResponseChannel
@@ -30,4 +34,4 @@ instance ToJSON Recording
 
 instance ToJSON VolumeRequest
 
-instance FromJSON VolumeRequest
+instance FromJSON BasicResponse

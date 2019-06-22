@@ -39,7 +39,7 @@ data EType
   | GetChannel
   | RecordingNameChange String
 
-type Channel = (String, Float)
+type Channel = (String, Double)
 
 -- Http helper for posting data
 postJson :: (ToJSON a, FromJSON b) => String -> a -> UI b 
@@ -84,7 +84,7 @@ createSelectBox opts = UI.select #+ map f opts
     f (t, v) = UI.option # set UI.value v # set UI.text t
 
 -- Defined channels
-channels :: [(String, Float)]
+channels :: [(String, Double)]
 channels = [("OE3", 99.90), ("Kronehit", 105.80), ("FM4", 103.80), ("NRJ", 104.20), ("Mein Kinderradio", 103.20)]
 
 -- Base folder to save recordings, note the trailing '/'
@@ -143,8 +143,13 @@ setup window
         rS <- liftIO . readIORef $ radioS
         nS <- trim <$> (liftIO . readIORef $ recordingNameS)
         when (rS && (nS /= "")) $ do
+          -- HTTP begin
+          r <- postJson "URL_HERE" $ Recording nS
+          fire e (LogMessage $ _message r)
+          -- HTTP end
           fire e (LogMessage "Recording Started")
-          fire e (LogMessage $ "Recording being saved to '" ++ baseFolder ++ nS ++ "'")
+          let rP = baseFolder ++ nS
+          fire e (LogMessage $ "Recording being saved to '" ++ rP ++ "'")
           liftIO . modifyIORef recordingS $ const True
           element recordingBtn # set UI.text "Stop Recording"
           return ()
@@ -153,6 +158,9 @@ setup window
       defHandler RecordingStop = do
         rS <- liftIO . readIORef $ radioS
         when rS $ do
+          -- HTTP begin
+          -- Make some HTTP request
+          -- HTTP end
           fire e (LogMessage "Recording Stopped")
           liftIO . modifyIORef recordingS $ const False
           element recordingBtn # set UI.text "Start Recording"
@@ -170,6 +178,10 @@ setup window
         rS <- liftIO . readIORef $ radioS
         vS <- liftIO . readIORef $ volS
         when (rS && vS < 15) $ do
+          -- HTTP start
+          r <- postJson "URL_HERE" $ VolumeRequest (vS + 1)
+          fire e (LogMessage $ _message r)
+         -- HTTP stop
           fire e (LogMessage "Volume Up by 1")
           liftIO $ modifyIORef volS (+1)
           element volDis # set UI.text (show $ vS + 1) 
@@ -180,6 +192,10 @@ setup window
         rS <- liftIO . readIORef $ radioS
         vS <- liftIO . readIORef $ volS
         when (rS && vS > 0) $ do
+          -- HTTP begin
+          r <- postJson "URL_HERE" $ VolumeRequest (vS - 1)
+          fire e (LogMessage $ _message r)
+          -- HTTP end
           fire e (LogMessage "Volume down by 1")
           liftIO $ modifyIORef volS (flip (-) 1)
           element volDis # set UI.text (show $ vS - 1) 
@@ -190,6 +206,10 @@ setup window
         rS <- liftIO . readIORef $ radioS
         cS <- liftIO . readIORef $ selChannelS
         when (rS && (cS /= c)) $ do
+          -- HTTP start
+          r <- postJson "URL_HERE" $ RequestChannel (snd c)
+          fire e (LogMessage $ "The Channel is " ++ _channel r)
+          -- HTTP stop
           fire e (LogMessage $ "Channel changed to " ++ fst c)
           liftIO $ modifyIORef selChannelS $ const c
           return ()
@@ -198,8 +218,10 @@ setup window
       defHandler GetChannel = do
         rS <- liftIO . readIORef $ radioS
         when rS $ do
+          -- HTTP start
           fire e (LogMessage "Getting channel")
           c <- getJson "http://www.mocky.io/v2/5d0d81dd3400006300ca4a1d"
+          -- HTTP stop
           fire e (LogMessage $ "The Channel is " ++ _channel c)
           return ()
 
