@@ -16,6 +16,12 @@ import Network.HTTP.Simple
 import Network.HTTP.Conduit
 import Models
 
+printDebug :: EHandler EType -> String -> UI()
+printDebug e s = do
+  let p = "DEBUG: "
+  fire e (LogMessage $ p ++ s)
+  liftIO . putStrLn $ p ++ s
+
 -- The main server function
 guiServer :: IO ()
 guiServer = startGUI defaultConfig {jsPort = Just 8023} setup
@@ -144,6 +150,7 @@ setup window
         nS <- trim <$> (liftIO . readIORef $ recordingNameS)
         when (rS && (nS /= "")) $ do
           -- HTTP begin
+          printDebug e "Sending POST request to start recording"
           r <- postJson "URL_HERE" $ Recording nS
           fire e (LogMessage $ _message r)
           -- HTTP end
@@ -159,6 +166,7 @@ setup window
         rS <- liftIO . readIORef $ radioS
         when rS $ do
           -- HTTP begin
+          printDebug e "Sending POST request to stop recording"
           -- Make some HTTP request
           -- HTTP end
           fire e (LogMessage "Recording Stopped")
@@ -179,6 +187,7 @@ setup window
         vS <- liftIO . readIORef $ volS
         when (rS && vS < 15) $ do
           -- HTTP start
+          printDebug e "Sending POST request to increase volume"
           r <- postJson "URL_HERE" $ VolumeRequest (vS + 1)
           fire e (LogMessage $ _message r)
          -- HTTP stop
@@ -193,6 +202,7 @@ setup window
         vS <- liftIO . readIORef $ volS
         when (rS && vS > 0) $ do
           -- HTTP begin
+          printDebug e "Sending POST request to decrease volume"
           r <- postJson "URL_HERE" $ VolumeRequest (vS - 1)
           fire e (LogMessage $ _message r)
           -- HTTP end
@@ -207,6 +217,7 @@ setup window
         cS <- liftIO . readIORef $ selChannelS
         when (rS && (cS /= c)) $ do
           -- HTTP start
+          printDebug e "Sending POST request to change channel"
           r <- postJson "URL_HERE" $ RequestChannel (snd c)
           fire e (LogMessage $ "The Channel is " ++ _channel r)
           -- HTTP stop
@@ -219,6 +230,7 @@ setup window
         rS <- liftIO . readIORef $ radioS
         when rS $ do
           -- HTTP start
+          printDebug e "Sending GET request to get channel info"
           fire e (LogMessage "Getting channel")
           c <- getJson "http://www.mocky.io/v2/5d0d81dd3400006300ca4a1d"
           -- HTTP stop
